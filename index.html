@@ -120,6 +120,17 @@
     <div id="summaryTable"></div>
   </div>
 
+  <div class="card">
+    <h2>GET /api/dashboard/clockevents</h2>
+    <div class="form-row">
+      <label>From <input type="date" id="clockFrom"></label>
+      <label>To <input type="date" id="clockTo"></label>
+      <button onclick="fetchClockEvents()">Get Clock Events</button>
+    </div>
+    <div class="status" id="clockStatus"></div>
+    <div id="clockTable"></div>
+  </div>
+
   <script>
     function esc(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -186,6 +197,48 @@
         tbody.appendChild(detail);
       });
       container.appendChild(table);
+    }
+
+    async function fetchClockEvents() {
+      const from = document.getElementById('clockFrom').value;
+      const to = document.getElementById('clockTo').value;
+      const status = document.getElementById('clockStatus');
+      const container = document.getElementById('clockTable');
+      status.textContent = '';
+      container.innerHTML = '';
+      try {
+        const data = await apiFetch(`/api/dashboard/clockevents?from=${from}&to=${to}`);
+        if (!data.length) { status.textContent = 'No data returned for this date range'; return; }
+        renderClockEventsTable(data, container);
+      } catch (e) {
+        status.textContent = e instanceof TypeError
+          ? 'Could not reach the API — check the base URL and that your origin is on the CORS allowlist'
+          : e.message;
+      }
+    }
+
+    function renderClockEventsTable(data, container) {
+      const table = document.createElement('table');
+      table.innerHTML = `<thead><tr>
+        <th>Student</th><th>Cohort</th><th>Date</th><th>Clock In</th><th>Clock Out</th>
+      </tr></thead><tbody></tbody>`;
+      const tbody = table.querySelector('tbody');
+      data.forEach(ev => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${esc(ev.name + ' ' + ev.surname)}</td>
+          <td>${esc(ev.cohortName)}</td>
+          <td>${esc(ev.sessionDate)}</td>
+          <td>${ev.clockInTime ? esc(formatTime(ev.clockInTime)) : '—'}</td>
+          <td>${ev.clockOutTime ? esc(formatTime(ev.clockOutTime)) : '—'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      container.appendChild(table);
+    }
+
+    function formatTime(isoString) {
+      return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
   </script>
 </body>
