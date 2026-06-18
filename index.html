@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard API Tester</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; padding: 24px; }
+    h1 { font-size: 1.4rem; margin-bottom: 20px; }
+    h2 { font-size: 1rem; margin-bottom: 12px; color: #444; }
+
+    .config-bar {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .config-bar label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      flex: 1;
+      min-width: 200px;
+    }
+    .config-bar input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .form-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+    .form-row label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .form-row input[type="date"] {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    button {
+      padding: 8px 18px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+
+    .status {
+      font-size: 0.85rem;
+      color: #c0392b;
+      min-height: 20px;
+      margin-bottom: 12px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      background: #f0f4f8;
+      border-bottom: 2px solid #ddd;
+      font-weight: 600;
+    }
+    td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+    tr.expandable { cursor: pointer; }
+    tr.expandable:hover td { background: #f9f9f9; }
+    tr.detail td { background: #fafbfc; font-size: 0.82rem; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>Dashboard API Tester</h1>
+
+  <div class="config-bar">
+    <label>
+      Base URL
+      <input type="text" id="baseUrl" placeholder="https://myapi.azurewebsites.net">
+    </label>
+    <label>
+      API Key
+      <input type="password" id="apiKey" placeholder="DASH...">
+    </label>
+  </div>
+
+  <script>
+  </script>
+</body>
+</html>
