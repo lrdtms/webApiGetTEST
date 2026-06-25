@@ -93,7 +93,29 @@
     td { padding: 8px 12px; border-bottom: 1px solid #eee; }
     tr.expandable { cursor: pointer; }
     tr.expandable:hover td { background: #f9f9f9; }
-    tr.detail td { background: #fafbfc; font-size: 0.82rem; color: #555; }
+    tr.detail td { background: #fafbfc; padding: 12px; }
+
+    .detail-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .tab-btn {
+      padding: 4px 14px;
+      background: #f0f4f8;
+      color: #555;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .tab-btn:hover { background: #e2e8f0; color: #333; }
+    .tab-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .tab-btn.active:hover { background: #1d4ed8; }
+    .student-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 24px;
+      font-size: 0.83rem;
+      color: #444;
+      padding: 2px 0;
+    }
 
     /* Filter controls */
     .filter-row {
@@ -273,12 +295,27 @@
         const detail = document.createElement('tr');
         detail.className = 'detail';
         detail.hidden = true;
-        const ci = cohort.clockedIn.map(s => esc(`${s.name} ${s.surname}`)).join(', ') || 'None';
-        const nci = cohort.notClockedIn.map(s => esc(`${s.name} ${s.surname}`)).join(', ') || 'None';
+
+        const ciNames = cohort.clockedIn.map(s => `<span>${esc(s.name + ' ' + s.surname)}</span>`).join('') || '<em>None</em>';
+        const nciNames = cohort.notClockedIn.map(s => `<span>${esc(s.name + ' ' + s.surname)}</span>`).join('') || '<em>None</em>';
+
         detail.innerHTML = `<td colspan="4">
-          <strong>Clocked In:</strong> ${ci}<br>
-          <strong>Not Clocked In:</strong> ${nci}
+          <div class="detail-tabs">
+            <button class="tab-btn active" data-tab="in">Clocked In (${cohort.totalClockedIn})</button>
+            <button class="tab-btn" data-tab="out">Not Clocked In (${cohort.totalNotClockedIn})</button>
+          </div>
+          <div class="student-list" data-content="in">${ciNames}</div>
+          <div class="student-list" data-content="out" hidden>${nciNames}</div>
         </td>`;
+
+        detail.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            detail.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+            detail.querySelectorAll('.student-list').forEach(el => { el.hidden = el.dataset.content !== tab; });
+          });
+        });
+
         row.addEventListener('click', () => { detail.hidden = !detail.hidden; });
         tbody.appendChild(row);
         tbody.appendChild(detail);
