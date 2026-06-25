@@ -94,6 +94,91 @@
     tr.expandable { cursor: pointer; }
     tr.expandable:hover td { background: #f9f9f9; }
     tr.detail td { background: #fafbfc; font-size: 0.82rem; color: #555; }
+
+    /* Filter controls */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    #clockSearch {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .filter-btn {
+      padding: 8px 14px;
+      background: #fff;
+      color: #2563eb;
+      border: 1px solid #2563eb;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .filter-btn:hover { background: #eff6ff; }
+    .filter-btn.active { background: #eff6ff; }
+    .filter-badge {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 10px;
+      padding: 1px 6px;
+      font-size: 0.75rem;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .filter-panel {
+      background: #f8fafc;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+    .filter-panel label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .filter-panel select,
+    .filter-panel input[type="text"] {
+      padding: 7px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      min-width: 160px;
+    }
+    .clear-btn {
+      padding: 7px 12px;
+      background: transparent;
+      color: #666;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .clear-btn:hover { background: #f5f5f5; color: #333; }
+    .row-count {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 8px;
+      text-align: right;
+    }
+    .no-results {
+      color: #888;
+      font-size: 0.875rem;
+      padding: 16px 0;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -132,6 +217,8 @@
   </div>
 
   <script>
+    let clockEventsData = [];
+
     function esc(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
@@ -206,14 +293,107 @@
       const container = document.getElementById('clockTable');
       status.textContent = '';
       container.innerHTML = '';
+      clockEventsData = [];
       try {
         const data = await apiFetch(`/api/dashboard/clockevents?from=${from}&to=${to}`);
         if (!data.length) { status.textContent = 'No data returned for this date range'; return; }
-        renderClockEventsTable(data, container);
+        clockEventsData = data;
+        renderClockControls(container, data);
+        applyFilters();
       } catch (e) {
         status.textContent = e instanceof TypeError
           ? 'Could not reach the API — check the base URL and that your origin is on the CORS allowlist'
           : e.message;
+      }
+    }
+
+    function renderClockControls(container, data) {
+      const cohorts = [...new Set(data.map(ev => ev.cohortName))].sort();
+      const options = cohorts.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      container.innerHTML = `
+        <div class="filter-row">
+          <input type="text" id="clockSearch" placeholder="Search student, cohort, date…" oninput="applyFilters()">
+          <button class="filter-btn" id="filterToggle" onclick="toggleFilterPanel()">Filter <span class="filter-badge" id="filterBadge" hidden></span></button>
+        </div>
+        <div class="filter-panel" id="filterPanel" hidden>
+          <label>Cohort
+            <select id="filterCohort" onchange="applyFilters()">
+              <option value="">All cohorts</option>
+              ${options}
+            </select>
+          </label>
+          <label>Student
+            <input type="text" id="filterStudent" placeholder="Type name…" oninput="applyFilters()">
+          </label>
+          <button class="clear-btn" onclick="clearFilters()">Clear filters</button>
+        </div>
+        <div id="clockTableBody"></div>
+        <div class="row-count" id="rowCount"></div>
+      `;
+    }
+
+    function toggleFilterPanel() {
+      const panel = document.getElementById('filterPanel');
+      const btn = document.getElementById('filterToggle');
+      if (!panel) return;
+      panel.hidden = !panel.hidden;
+      btn.classList.toggle('active', !panel.hidden);
+    }
+
+    function updateFilterBadge() {
+      const cohort = document.getElementById('filterCohort')?.value || '';
+      const student = (document.getElementById('filterStudent')?.value || '').trim();
+      const count = (cohort ? 1 : 0) + (student ? 1 : 0);
+      const badge = document.getElementById('filterBadge');
+      if (!badge) return;
+      if (count > 0) {
+        badge.textContent = `·${count}`;
+        badge.hidden = false;
+      } else {
+        badge.hidden = true;
+      }
+    }
+
+    function clearFilters() {
+      const cohort = document.getElementById('filterCohort');
+      const student = document.getElementById('filterStudent');
+      if (cohort) cohort.value = '';
+      if (student) student.value = '';
+      applyFilters();
+    }
+
+    function applyFilters() {
+      if (!clockEventsData.length) return;
+
+      const search = (document.getElementById('clockSearch')?.value || '').trim().toLowerCase();
+      const cohort = document.getElementById('filterCohort')?.value || '';
+      const student = (document.getElementById('filterStudent')?.value || '').trim().toLowerCase();
+
+      const filtered = clockEventsData.filter(ev => {
+        const fullName = `${ev.name} ${ev.surname}`.toLowerCase();
+        if (search && !`${fullName} ${ev.cohortName.toLowerCase()} ${ev.sessionDate}`.includes(search)) return false;
+        if (cohort && ev.cohortName !== cohort) return false;
+        if (student && !fullName.includes(student)) return false;
+        return true;
+      });
+
+      updateFilterBadge();
+
+      const tableBody = document.getElementById('clockTableBody');
+      if (!tableBody) return;
+      tableBody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tableBody.innerHTML = '<p class="no-results">No results match the current filters.</p>';
+      } else {
+        renderClockEventsTable(filtered, tableBody);
+      }
+
+      const rowCount = document.getElementById('rowCount');
+      if (rowCount) {
+        rowCount.textContent = filtered.length < clockEventsData.length
+          ? `Showing ${filtered.length} of ${clockEventsData.length} rows`
+          : '';
       }
     }
 
