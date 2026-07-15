@@ -455,37 +455,13 @@
       container.appendChild(table);
     }
 
-    // The API returns naive timestamps in the server's local time (Europe/Brussels,
-    // CET/CEST). We convert them to South Africa time (Africa/Johannesburg, fixed UTC+2)
-    // by resolving Brussels' actual UTC offset for that instant, so DST transitions
-    // (last Sunday of March/October) are handled automatically instead of a hardcoded +1/+2.
-    function getTimeZoneOffsetMinutes(date, timeZone) {
-      const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone,
-        hour12: false,
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
-      }).formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
-      const asUTC = Date.UTC(
-        parts.year, parts.month - 1, parts.day,
-        parts.hour === '24' ? 0 : parts.hour, parts.minute, parts.second
-      );
-      return (asUTC - date.getTime()) / 60000;
-    }
-
+    // The API's naive timestamps (no zone marker) are actually UTC — the backend
+    // serializes DateTime.UtcNow without a trailing 'Z'. South Africa has no DST
+    // (always UTC+2), so we just parse as UTC and let the timeZone option below
+    // apply the fixed offset for display.
     function formatTime(isoString) {
-      // If the string already carries zone info (Z or +hh:mm/-hh:mm) it's an
-      // unambiguous instant — parse it directly instead of guessing Brussels offset.
       const hasZone = /Z$|[+-]\d{2}:\d{2}$/.test(isoString);
-      let instant;
-      if (hasZone) {
-        instant = new Date(isoString);
-      } else {
-        const guessUTC = new Date(isoString + 'Z');
-        if (isNaN(guessUTC.getTime())) return isoString;
-        const offsetMinutes = getTimeZoneOffsetMinutes(guessUTC, 'Europe/Brussels');
-        instant = new Date(guessUTC.getTime() - offsetMinutes * 60000);
-      }
+      const instant = hasZone ? new Date(isoString) : new Date(isoString + 'Z');
       if (isNaN(instant.getTime())) return isoString;
       return instant.toLocaleTimeString('en-ZA', {
         hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg'
