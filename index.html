@@ -474,10 +474,20 @@
     }
 
     function formatTime(isoString) {
-      const guessUTC = new Date(isoString + 'Z');
-      const offsetMinutes = getTimeZoneOffsetMinutes(guessUTC, 'Europe/Brussels');
-      const actualUTC = new Date(guessUTC.getTime() - offsetMinutes * 60000);
-      return actualUTC.toLocaleTimeString('en-ZA', {
+      // If the string already carries zone info (Z or +hh:mm/-hh:mm) it's an
+      // unambiguous instant — parse it directly instead of guessing Brussels offset.
+      const hasZone = /Z$|[+-]\d{2}:\d{2}$/.test(isoString);
+      let instant;
+      if (hasZone) {
+        instant = new Date(isoString);
+      } else {
+        const guessUTC = new Date(isoString + 'Z');
+        if (isNaN(guessUTC.getTime())) return isoString;
+        const offsetMinutes = getTimeZoneOffsetMinutes(guessUTC, 'Europe/Brussels');
+        instant = new Date(guessUTC.getTime() - offsetMinutes * 60000);
+      }
+      if (isNaN(instant.getTime())) return isoString;
+      return instant.toLocaleTimeString('en-ZA', {
         hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg'
       });
     }
