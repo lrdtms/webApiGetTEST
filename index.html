@@ -455,22 +455,37 @@
       container.appendChild(table);
     }
 
-    // The API's naive timestamps (no zone marker) are already SA local wall-clock
-    // time — confirmed against the local app (09:09 there matched a raw "09:09:00"
-    // value from the API). Display those digits as-is rather than shifting them.
-    // Only timestamps that explicitly carry zone info (Z or an offset) represent an
-    // unambiguous instant, so those alone get converted to Africa/Johannesburg.
+    // The API tags timestamps with 'Z' but the value is actually the server's
+    // Brussels wall-clock time, not a true UTC instant — confirmed against a real
+    // event where the raw "...Z" digits (09:09:42) matched the local app's SA time
+    // (09:09) exactly. That only lines up because Brussels is on CEST (UTC+2) right
+    // now, same as SA's fixed UTC+2 — in CET (winter, UTC+1) the raw value would be
+    // 1 hour behind actual SA time. So: ignore the misleading 'Z', treat the digits
+    // as Brussels local time, and convert to SA (Africa/Johannesburg) accounting for
+    // the real CET/CEST DST offset.
+    function getTimeZoneOffsetMinutes(date, timeZone) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }).formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+      const asUTC = Date.UTC(
+        parts.year, parts.month - 1, parts.day,
+        parts.hour === '24' ? 0 : parts.hour, parts.minute, parts.second
+      );
+      return (asUTC - date.getTime()) / 60000;
+    }
+
     function formatTime(isoString) {
-      const hasZone = /Z$|[+-]\d{2}:\d{2}$/.test(isoString);
-      if (hasZone) {
-        const instant = new Date(isoString);
-        if (isNaN(instant.getTime())) return isoString;
-        return instant.toLocaleTimeString('en-ZA', {
-          hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg'
-        });
-      }
-      const match = isoString.match(/T(\d{2}):(\d{2})/);
-      return match ? `${match[1]}:${match[2]}` : isoString;
+      const naive = isoString.replace(/(\.\d+)?(Z|[+-]\d{2}:\d{2})$/, '');
+      const guessUTC = new Date(naive + 'Z');
+      if (isNaN(guessUTC.getTime())) return isoString;
+      const offsetMinutes = getTimeZoneOffsetMinutes(guessUTC, 'Europe/Brussels');
+      const instant = new Date(guessUTC.getTime() - offsetMinutes * 60000);
+      return instant.toLocaleTimeString('en-ZA', {
+        hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg'
+      });
     }
   </script>
 </body>
