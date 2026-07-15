@@ -455,17 +455,22 @@
       container.appendChild(table);
     }
 
-    // The API's naive timestamps (no zone marker) are actually UTC — the backend
-    // serializes DateTime.UtcNow without a trailing 'Z'. South Africa has no DST
-    // (always UTC+2), so we just parse as UTC and let the timeZone option below
-    // apply the fixed offset for display.
+    // The API's naive timestamps (no zone marker) are already SA local wall-clock
+    // time — confirmed against the local app (09:09 there matched a raw "09:09:00"
+    // value from the API). Display those digits as-is rather than shifting them.
+    // Only timestamps that explicitly carry zone info (Z or an offset) represent an
+    // unambiguous instant, so those alone get converted to Africa/Johannesburg.
     function formatTime(isoString) {
       const hasZone = /Z$|[+-]\d{2}:\d{2}$/.test(isoString);
-      const instant = hasZone ? new Date(isoString) : new Date(isoString + 'Z');
-      if (isNaN(instant.getTime())) return isoString;
-      return instant.toLocaleTimeString('en-ZA', {
-        hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg'
-      });
+      if (hasZone) {
+        const instant = new Date(isoString);
+        if (isNaN(instant.getTime())) return isoString;
+        return instant.toLocaleTimeString('en-ZA', {
+          hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg'
+        });
+      }
+      const match = isoString.match(/T(\d{2}):(\d{2})/);
+      return match ? `${match[1]}:${match[2]}` : isoString;
     }
   </script>
 </body>
